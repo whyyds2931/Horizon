@@ -57,3 +57,15 @@ jobs:
           commit_message: "📝 Daily Summary: ${{ env.DATE }}"
           publish_branch: gh-pages
           enable_jekyll: true
+      - name: Publish to Blog
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          SUMMARY=$(ls docs/_posts/*-summary-zh.md 2>/dev/null | head -1)
+          if [ -n "$SUMMARY" ]; then
+            pip install markdown -q
+            python scripts/publish_to_blog.py --token "$GH_PAT" --summary "$SUMMARY"
+          else
+            echo "No summary found, skipping blog publish"
+          fi
+
