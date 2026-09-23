@@ -28,6 +28,22 @@
       "finance-news": {
         "threshold": 6.0,
         "topic_dedup": true
+      },
+      "bio-news": {
+        "threshold": 5.5,
+        "topic_dedup": true
+      },
+      "psych-news": {
+        "threshold": 5.5,
+        "topic_dedup": true
+      },
+      "science-news": {
+        "threshold": 5.0,
+        "topic_dedup": true
+      },
+      "philosophy-news": {
+        "threshold": 5.0,
+        "topic_dedup": false
       }
     }
   },
@@ -90,31 +106,31 @@
         "name": "Nature",
         "url": "https://www.nature.com/nature.rss",
         "enabled": true,
-        "profile": "tech-blog"
+        "profile": "bio-news"
       },
       {
         "name": "Nature Biotechnology",
         "url": "https://www.nature.com/nbt.rss",
         "enabled": true,
-        "profile": "tech-blog"
+        "profile": "bio-news"
       },
       {
         "name": "arXiv q-bio",
         "url": "https://rss.arxiv.org/rss/q-bio",
         "enabled": true,
-        "profile": "tech-blog"
+        "profile": "bio-news"
       },
       {
         "name": "ScienceDaily Mind & Brain",
         "url": "https://www.sciencedaily.com/rss/mind_brain.xml",
         "enabled": true,
-        "profile": "tech-blog"
+        "profile": "psych-news"
       },
       {
         "name": "Psychology Today",
         "url": "https://www.psychologytoday.com/us/front/feed",
         "enabled": true,
-        "profile": "tech-blog"
+        "profile": "psych-news"
       },
       {
         "name": "CNBC Finance",
@@ -138,7 +154,13 @@
         "name": "Quanta Magazine",
         "url": "https://www.quantamagazine.org/feed/",
         "enabled": true,
-        "profile": "tech-blog"
+        "profile": "science-news"
+      },
+      {
+        "name": "Aeon",
+        "url": "https://aeon.co/feed",
+        "enabled": true,
+        "profile": "philosophy-news"
       }
     ],
     "reddit": {
@@ -209,6 +231,10 @@
     "profile_order": [
       "tech-news",
       "tech-blog",
+      "bio-news",
+      "psych-news",
+      "science-news",
+      "philosophy-news",
       "finance-news"
     ],
     "category_groups": {},
