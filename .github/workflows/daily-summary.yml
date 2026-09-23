@@ -33,19 +33,6 @@ jobs:
       - name: Prepare GitHub Actions config
         run: cp data/config.github.json data/config.json
 
-      - name: Debug Gemini exact call
-        env:
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-        run: |
-          echo "=== A. gemini-flash-latest WITH responseMimeType JSON ==="
-          curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=$GOOGLE_API_KEY" -H "Content-Type: application/json" -d '{"system_instruction":{"parts":[{"text":"Return JSON only."}]},"contents":[{"parts":[{"text":"score this"}]}],"generationConfig":{"responseMimeType":"application/json","maxOutputTokens":1024,"temperature":0.7}}' | head -c 900
-          echo ""
-          echo "=== B. gemini-2.5-flash-lite WITH responseMimeType JSON ==="
-          curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=$GOOGLE_API_KEY" -H "Content-Type: application/json" -d '{"system_instruction":{"parts":[{"text":"Return JSON only."}]},"contents":[{"parts":[{"text":"score this"}]}],"generationConfig":{"responseMimeType":"application/json","maxOutputTokens":1024,"temperature":0.7}}' | head -c 900
-          echo ""
-          echo "=== C. gemini-3.6-flash WITH responseMimeType JSON ==="
-          curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=$GOOGLE_API_KEY" -H "Content-Type: application/json" -d '{"system_instruction":{"parts":[{"text":"Return JSON only."}]},"contents":[{"parts":[{"text":"score this"}]}],"generationConfig":{"responseMimeType":"application/json","maxOutputTokens":1024,"temperature":0.7}}' | head -c 900
-
       - name: Run Horizon
         env:
           # Map secrets to environment variables expected by config.json
