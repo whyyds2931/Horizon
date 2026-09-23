@@ -7,8 +7,7 @@
     "max_tokens": 8192,
     "throttle_sec": 1,
     "languages": [
-      "zh",
-      "en"
+      "zh"
     ],
     "analysis_concurrency": 5,
     "enrichment_concurrency": 5
@@ -281,8 +280,5 @@
       }
     },
     "headers": ""
-  },
-  "languages": [
-    "zh"
-  ]
+  }
 }
