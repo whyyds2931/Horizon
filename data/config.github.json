@@ -1,7 +1,7 @@
 {
   "ai": {
     "provider": "gemini",
-    "model": "gemini-flash-latest",
+    "model": "gemini-3.6-flash",
     "api_key_env": "GOOGLE_API_KEY",
     "temperature": 0.3,
     "max_tokens": 8192,
@@ -63,7 +63,7 @@
     ],
     "hackernews": {
       "enabled": true,
-      "fetch_top_stories": 50,
+      "fetch_top_stories": 25,
       "min_score": 100,
       "profile": "tech-news"
     },
@@ -81,22 +81,16 @@
         "profile": "tech-blog"
       },
       {
-        "name": "Sean Goedecke",
-        "url": "https://www.seangoedecke.com/rss.xml",
+        "name": "GitHub Trending Daily",
+        "url": "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
         "enabled": true,
-        "profile": "tech-blog"
+        "profile": "tech-news"
       },
       {
         "name": "CNBC Finance",
         "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000",
         "enabled": true,
         "profile": "finance-news"
-      },
-      {
-        "name": "GitHub Trending Daily",
-        "url": "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
-        "enabled": true,
-        "profile": "tech-news"
       },
       {
         "name": "Semianalysis",
@@ -111,16 +105,10 @@
         "profile": "tech-news"
       },
       {
-        "name": "量子位",
-        "url": "https://www.qbitai.com/feed",
+        "name": "华尔街见闻",
+        "url": "https://dedicated.wallstreetcn.com/rss.xml",
         "enabled": true,
-        "profile": "tech-news"
-      },
-      {
-        "name": "InfoQ 中文",
-        "url": "https://www.infoq.cn/feed",
-        "enabled": true,
-        "profile": "tech-news"
+        "profile": "finance-news"
       },
       {
         "name": "Nature",
@@ -141,32 +129,14 @@
         "profile": "tech-blog"
       },
       {
-        "name": "Phys.org Biology",
-        "url": "https://phys.org/rss-feed/biology-news/",
-        "enabled": true,
-        "profile": "tech-blog"
-      },
-      {
-        "name": "ScienceDaily Plants & Animals",
-        "url": "https://www.sciencedaily.com/rss/plants_animals.xml",
-        "enabled": true,
-        "profile": "tech-blog"
-      },
-      {
-        "name": "ScienceDaily Health",
-        "url": "https://www.sciencedaily.com/rss/health_medicine.xml",
-        "enabled": true,
-        "profile": "tech-blog"
-      },
-      {
         "name": "ScienceDaily Mind & Brain",
         "url": "https://www.sciencedaily.com/rss/mind_brain.xml",
         "enabled": true,
         "profile": "tech-blog"
       },
       {
-        "name": "arXiv q-bio.NC",
-        "url": "https://rss.arxiv.org/rss/q-bio.NC",
+        "name": "ScienceDaily Health",
+        "url": "https://www.sciencedaily.com/rss/health_medicine.xml",
         "enabled": true,
         "profile": "tech-blog"
       },
@@ -183,32 +153,8 @@
         "profile": "tech-blog"
       },
       {
-        "name": "MarketWatch Top Stories",
-        "url": "http://feeds.marketwatch.com/marketwatch/topstories/",
-        "enabled": true,
-        "profile": "finance-news"
-      },
-      {
-        "name": "Seeking Alpha",
-        "url": "https://seekingalpha.com/market_currents.xml",
-        "enabled": true,
-        "profile": "finance-news"
-      },
-      {
         "name": "arXiv q-fin",
         "url": "https://rss.arxiv.org/rss/q-fin",
-        "enabled": true,
-        "profile": "finance-news"
-      },
-      {
-        "name": "arXiv econ",
-        "url": "https://rss.arxiv.org/rss/econ",
-        "enabled": true,
-        "profile": "finance-news"
-      },
-      {
-        "name": "华尔街见闻",
-        "url": "https://dedicated.wallstreetcn.com/rss.xml",
         "enabled": true,
         "profile": "finance-news"
       },
@@ -223,22 +169,10 @@
         "url": "https://www.quantamagazine.org/feed/",
         "enabled": true,
         "profile": "tech-blog"
-      },
-      {
-        "name": "ScienceDaily Earth & Climate",
-        "url": "https://www.sciencedaily.com/rss/earth_climate.xml",
-        "enabled": true,
-        "profile": "tech-blog"
-      },
-      {
-        "name": "ScienceDaily Science & Society",
-        "url": "https://www.sciencedaily.com/rss/science_society.xml",
-        "enabled": true,
-        "profile": "tech-blog"
       }
     ],
     "reddit": {
-      "enabled": true,
+      "enabled": false,
       "subreddits": [
         {
           "subreddit": "MachineLearning",
@@ -268,7 +202,7 @@
         {
           "channel": "zaihuapd",
           "enabled": true,
-          "fetch_limit": 40,
+          "fetch_limit": 20,
           "profile": [
             "tech-news",
             "finance-news"
@@ -282,11 +216,9 @@
       "languages": [
         "All",
         "Python",
-        "TypeScript",
-        "Rust",
-        "Go"
+        "TypeScript"
       ],
-      "max_items": 40,
+      "max_items": 20,
       "category": "oss-trending"
     },
     "google_news": {
@@ -294,7 +226,7 @@
       "query": "biology OR neuroscience OR psychology OR biotechnology OR (climate change) OR economics OR (public health)",
       "language": "en",
       "country": "US",
-      "max_results": 60,
+      "max_results": 30,
       "category": "science",
       "profile": "tech-blog"
     }
@@ -349,5 +281,8 @@
       }
     },
     "headers": ""
-  }
+  },
+  "languages": [
+    "zh"
+  ]
 }
