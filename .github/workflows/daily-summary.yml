@@ -33,22 +33,6 @@ jobs:
       - name: Prepare GitHub Actions config
         run: cp data/config.github.json data/config.json
 
-      - name: Debug Gemini API
-        env:
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-        run: |
-          echo "=== 1. 列出可用模型（前50个）==="
-          curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GOOGLE_API_KEY" | python3 -c "import sys,json; d=json.load(sys.stdin); print([m['name'] for m in d.get('models',[])][:50])" 2>&1 || curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GOOGLE_API_KEY" | head -c 1500
-          echo ""
-          echo "=== 2. 测试 gemini-2.0-flash ==="
-          curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GOOGLE_API_KEY" -H "Content-Type: application/json" -d '{"contents":[{"parts":[{"text":"Reply with OK"}]}]}' | head -c 800
-          echo ""
-          echo "=== 3. 测试 gemini-2.5-flash ==="
-          curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$GOOGLE_API_KEY" -H "Content-Type: application/json" -d '{"contents":[{"parts":[{"text":"Reply with OK"}]}]}' | head -c 800
-          echo ""
-          echo "=== 4. 测试 gemini-flash-latest ==="
-          curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=$GOOGLE_API_KEY" -H "Content-Type: application/json" -d '{"contents":[{"parts":[{"text":"Reply with OK"}]}]}' | head -c 800
-
       - name: Run Horizon
         env:
           # Map secrets to environment variables expected by config.json
