@@ -4,7 +4,9 @@ on:
   schedule:
     # GitHub scheduled workflows use UTC. 20:00 UTC is 04:00 Asia/Shanghai;
     # this intentionally runs early to offset the observed schedule delay.
-    - cron: '0 23 * * *'
+    # 22:47 UTC = 06:47 Asia/Shanghai. Non-top-of-hour to avoid
+    # GitHub's high-load skipping of scheduled workflows at :00.
+    - cron: '47 22 * * *'
   workflow_dispatch:      # Allow manual trigger
 
 jobs:
