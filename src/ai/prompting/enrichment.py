@@ -19,7 +19,14 @@ GROUNDING_RULES = f"""- Treat the source item as the primary account of what hap
 
 def target_language_instruction(language: str) -> str:
     if language.lower() == "zh":
-        return "Simplified Chinese (language tag `zh`)"
+        return """Simplified Chinese, with bilingual parallel output format. For every block's content and the block/artifact title:
+1. First write the English original text (if the source item is in English), then on a new line write a faithful Simplified Chinese translation.
+2. Use this exact format inside the content string:
+   <English original paragraph>
+   翻译：<Chinese translation paragraph>
+3. If the source item is already in Chinese, output the Chinese text only, do not add English.
+4. Keep the translation concise and natural, matching the original meaning. Do not translate numbers, brand names, or technical terms.
+"""
     return f"language `{language}`"
 
 
