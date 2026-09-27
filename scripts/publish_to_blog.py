@@ -311,7 +311,11 @@ def main():
 
     post_path = f"posts/{article['slug']}.html"
     print(f"→ 上传 {post_path}")
-    put_file(headers, post_path, post_html, f"🤖 每日资讯自动发布: {article['date']}")
+    try:
+        _, post_sha = fetch_file(headers, post_path)
+        put_file(headers, post_path, post_html, f"🤖 每日资讯自动发布: 更新 {article['date']}", sha=post_sha)
+    except Exception:
+        put_file(headers, post_path, post_html, f"🤖 每日资讯自动发布: {article['date']}")
 
     script_js, script_sha = fetch_file(headers, "script.js")
     new_script = update_script_js(script_js, article)
@@ -323,3 +327,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
