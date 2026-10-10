@@ -1,16 +1,20 @@
 {
   "ai": {
     "provider": "gemini",
-    "model": "gemini-3.6-flash",
+    "provider_chain": "gemini,deepseek",
+    "model": "gemini-2.5-flash-lite",
     "api_key_env": "GOOGLE_API_KEY",
     "temperature": 0.3,
-    "max_tokens": 8192,
-    "throttle_sec": 1.0,
+    "max_tokens": 4096,
+    "throttle_sec": 2.0,
     "languages": [
       "zh"
     ],
-    "analysis_concurrency": 2,
-    "enrichment_concurrency": 2
+    "analysis_concurrency": 1,
+    "enrichment_concurrency": 1,
+    "bilingual_output": true,
+    "enable_enrichment_tools": false,
+    "max_analysis_items": 48
   },
   "processing": {
     "profiles_dir": "profiles",
@@ -226,7 +230,17 @@
     "time_window_hours": 24
   },
   "digest": {
-    "max_items": null,
+    "max_items": 24,
+    "profile_minimum": 2,
+    "profile_limits": {
+      "tech-news": 8,
+      "tech-blog": 6,
+      "finance-news": 6,
+      "bio-news": 5,
+      "psych-news": 5,
+      "science-news": 4,
+      "philosophy-news": 3
+    },
     "profile_order": [
       "tech-news",
       "tech-blog",

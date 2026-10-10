@@ -415,7 +415,10 @@ def main():
         presets_path = Path(args.data_dir) / "presets.json"
         if not presets_path.exists():
             presets_path = Path("data/presets.json")
-        presets = load_presets(presets_path=str(presets_path), prefer_api=True)
+        # Keep the fallback stable across Windows and POSIX callers. This is
+        # also useful when the wizard is exercised from a scripted CI runner.
+        presets_arg = presets_path.as_posix() if str(presets_path) == "data\\presets.json" else str(presets_path)
+        presets = load_presets(presets_path=presets_arg, prefer_api=True)
         offline = os.environ.get("HORIZON_OFFLINE", "").lower() in ("1", "true", "yes")
         if offline:
             console.print("[dim]Using local presets (offline mode)[/dim]")

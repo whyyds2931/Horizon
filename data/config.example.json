@@ -7,7 +7,10 @@
     "max_tokens": 4096,
     "throttle_sec": 0,
     "analysis_concurrency": 1,
-    "enrichment_concurrency": 1
+    "enrichment_concurrency": 1,
+    "bilingual_output": false,
+    "enable_enrichment_tools": true,
+    "max_analysis_items": null
   },
   "processing": {
     "profiles_dir": "profiles",
@@ -209,6 +212,8 @@
   },
   "digest": {
     "max_items": null,
+    "profile_minimum": 0,
+    "profile_limits": {},
     "profile_order": [
       "tech-news",
       "tech-blog",

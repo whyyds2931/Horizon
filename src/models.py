@@ -157,7 +157,7 @@ AI_PROVIDER_DEFAULTS = {
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     },
     AIProvider.GEMINI: {
-        "model": "gemini-1.5-flash",
+        "model": "gemini-2.5-flash-lite",
         "api_key_env": "GOOGLE_API_KEY",
         "base_url": None,
     },
@@ -198,6 +198,14 @@ class AIConfig(BaseModel):
     analysis_concurrency: int = 1
     enrichment_concurrency: int = 1
     languages: List[str] = Field(default_factory=lambda: ["en"])
+    # Keep one localized artifact while asking the model to render English first
+    # and Simplified Chinese second. This avoids doubling API calls for digests.
+    bilingual_output: bool = False
+    # External search adds several calls per item. Disable it for quota-limited
+    # scheduled runs while keeping it available for local, richer runs.
+    enable_enrichment_tools: bool = True
+    # Optional guardrail for providers with small daily quotas.
+    max_analysis_items: Optional[int] = Field(default=None, gt=0)
     # Azure OpenAI specific; required when provider == AZURE
     azure_endpoint_env: Optional[str] = None
     api_version: Optional[str] = None
@@ -599,6 +607,19 @@ class DigestConfig(BaseModel):
     default_group: str = "other"
     default_group_limit: Optional[int] = Field(default=None, gt=0)
     profile_order: List[str] = Field(default_factory=list)
+    # Optional profile-aware balancing. A positive minimum keeps the digest
+    # from being dominated by the highest-volume source category.
+    profile_minimum: int = Field(default=0, ge=0)
+    profile_limits: Dict[str, int] = Field(default_factory=dict)
+
+    @field_validator("profile_limits")
+    @classmethod
+    def validate_profile_limits(cls, value: Dict[str, int]) -> Dict[str, int]:
+        if any(not key.strip() for key in value):
+            raise ValueError("digest.profile_limits keys must be non-empty")
+        if any(limit <= 0 for limit in value.values()):
+            raise ValueError("digest.profile_limits values must be positive")
+        return value
 
     @field_validator("profile_order")
     @classmethod

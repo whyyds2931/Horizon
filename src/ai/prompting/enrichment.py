@@ -17,9 +17,16 @@ GROUNDING_RULES = f"""- Treat the source item as the primary account of what hap
 - History search results are earlier Horizon summaries, not independent verification. Their dates are digest dates. Use them only for a concrete predecessor, follow-up, or relevant change; sharing a company or broad topic is insufficient. Cite every historical claim to its supplied result ID. Discard all candidates when none helps explain the current item."""
 
 
-def target_language_instruction(language: str) -> str:
+def target_language_instruction(language: str, bilingual: bool = False) -> str:
+    if bilingual:
+        return """Simplified Chinese (language tag `zh`) with a strict bilingual layout. Every artifact title, block title, and block content must contain both languages in this order:
+1. First write a concise, faithful English version (translate the source to English when the source is Chinese).
+2. On the next line write `中文：` followed by a faithful Simplified Chinese version (translate the source to Chinese when the source is English).
+3. Never output Chinese-only or English-only content. Never put the Chinese line before the English line.
+4. Preserve numbers, brand names, product names, code, and technical terms unless a standard Chinese translation is clear.
+"""
     if language.lower() == "zh":
-        return """Simplified Chinese, with bilingual parallel output format. For every block's content and the block/artifact title:
+        return """Simplified Chinese (language tag `zh`), with bilingual parallel output format. For every block's content and the block/artifact title:
 1. First write the English original text (if the source item is in English), then on a new line write a faithful Simplified Chinese translation.
 2. Use this exact format inside the content string:
    <English original paragraph>
@@ -72,6 +79,7 @@ def block_prompt(
     block: ProfileBlock,
     *,
     include_header: bool,
+    bilingual: bool = False,
 ) -> str:
     header_instruction = (
         "Set `title` to the localized artifact title."
@@ -87,7 +95,7 @@ def block_prompt(
 
 # Target language
 
-Write the complete artifact in {target_language_instruction(language)}.
+Write the complete artifact in {target_language_instruction(language, bilingual)}.
 
 # Grounding rules
 
@@ -116,6 +124,7 @@ def artifact_prompt(
     profile: LoadedProfile,
     language: str,
     blocks: list[ProfileBlock],
+    bilingual: bool = False,
 ) -> str:
     block_contract = "\n".join(
         f"- `{block.id}`"
@@ -126,7 +135,7 @@ def artifact_prompt(
 
 # Target language
 
-Write the complete artifact in {target_language_instruction(language)}.
+Write the complete artifact in {target_language_instruction(language, bilingual)}.
 
 # Grounding rules
 

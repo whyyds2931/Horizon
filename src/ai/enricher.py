@@ -120,12 +120,16 @@ class ContentEnricher:
         languages: list[str],
         console: Optional[Console] = None,
         tools: Optional[ToolRegistry] = None,
+        bilingual: bool = False,
+        enable_tools: bool = True,
     ):
         self.client = ai_client
         self.profiles = profiles
         self.languages = languages
         self.console = console or Console(stderr=True)
         self.tools = tools or ToolRegistry()
+        self.bilingual = bilingual
+        self.enable_tools = enable_tools
         self._validate_profile_tools()
 
     def _validate_profile_tools(self) -> None:
@@ -226,10 +230,12 @@ class ContentEnricher:
         artifacts = {}
         for language in self.languages:
             generated = await self._generate_artifact(
-                item, profile, language, tool_results
+                item, profile, language, tool_results, bilingual=self.bilingual
             )
             self._expand_request_source_refs(generated.blocks, tool_results)
             self._validate_blocks(generated.blocks, profile, tool_results)
+            if self.bilingual and language.lower() == "zh":
+                self._validate_bilingual_artifact(generated)
             generated.title = normalize_language(generated.title, language)
             for block in generated.blocks:
                 block.title = normalize_language(block.title, language)
@@ -271,6 +277,8 @@ class ContentEnricher:
     async def _plan_and_execute_tools(
         self, item: ContentItem, profile: LoadedProfile
     ) -> list[ToolResult]:
+        if not self.enable_tools:
+            return []
         allowed = {
             block.id: set(block.tools)
             for block in profile.definition.enrichment.blocks
@@ -320,6 +328,8 @@ class ContentEnricher:
         profile: LoadedProfile,
         language: str,
         tool_results: list[ToolResult],
+        *,
+        bilingual: bool = False,
     ) -> GeneratedArtifact:
         configured_blocks = profile.definition.enrichment.blocks
         result_block_ids = {result.block_id for result in tool_results}
@@ -349,10 +359,14 @@ class ContentEnricher:
                     raise ValueError(
                         "missing required blocks: " + ", ".join(sorted(missing))
                     )
+                if bilingual and language.lower() == "zh":
+                    self._validate_bilingual_artifact(generated)
 
             generated = await self._complete_model(
                 GeneratedArtifact,
-                system=artifact_prompt(profile, language, base_blocks),
+                system=artifact_prompt(
+                    profile, language, base_blocks, bilingual=bilingual
+                ),
                 user=(
                     item_context(item, profile, include_content=True)
                     + "\n\n# Tool results\n\nNo tool results are available to these blocks."
@@ -402,6 +416,17 @@ class ContentEnricher:
                     raise ValueError(
                         f"block ID {generated.block.id} does not match {block.id}"
                     )
+                if bilingual and language.lower() == "zh":
+                    values = [generated.block.title, generated.block.content]
+                    if any(
+                        "中文：" not in value
+                        or not value.split("中文：", 1)[0].strip()
+                        or not value.split("中文：", 1)[1].strip()
+                        for value in values
+                    ):
+                        raise ValueError(
+                            "bilingual block must contain English followed by 中文："
+                        )
 
             generated = await self._complete_model(
                 response_model,
@@ -410,6 +435,7 @@ class ContentEnricher:
                     language,
                     block,
                     include_header=not title,
+                    bilingual=bilingual,
                 ),
                 user=(
                     item_context(item, profile, include_content=True)
@@ -443,6 +469,26 @@ class ContentEnricher:
         for generated_block in blocks:
             generated_block.primary = configured_by_id[generated_block.id].primary
         return GeneratedArtifact(title=title, blocks=blocks)
+
+    @staticmethod
+    def _validate_bilingual_artifact(generated: GeneratedArtifact) -> None:
+        """Reject partial localization before it can reach a published digest."""
+        values = [generated.title]
+        for block in generated.blocks:
+            values.extend((block.title, block.content))
+        missing = []
+        for index, value in enumerate(values):
+            if "中文：" not in value:
+                missing.append(index)
+                continue
+            english, chinese = value.split("中文：", 1)
+            if not english.strip() or not chinese.strip():
+                missing.append(index)
+        if missing:
+            raise ValueError(
+                "bilingual artifact is incomplete; every title and block content "
+                "must include an English line followed by a '中文：' line"
+            )
 
     @staticmethod
     def _sources_from_tool_results(

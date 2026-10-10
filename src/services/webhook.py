@@ -386,6 +386,7 @@ class WebhookNotifier:
         date: str,
         lang: str,
         summarizer: DailySummarizer,
+        bilingual: bool = False,
     ) -> dict[str, Any]:
         """Build a single Feishu Card JSON 2.0 message with collapsed item details."""
         overview = self._build_feishu_collapsible_overview(
@@ -413,6 +414,7 @@ class WebhookNotifier:
                     total=view_item.group_count,
                     title=view_item.title,
                     score=view_item.score,
+                    bilingual=bilingual,
                 )
                 elements.append(
                     _collapsible_panel(
@@ -463,6 +465,7 @@ class WebhookNotifier:
         date: str,
         lang: str,
         summarizer: DailySummarizer,
+        bilingual: bool = False,
     ) -> List[dict[str, Any]]:
         """Build the variables for all webhook messages for one language."""
         webhook_languages = getattr(self.config, "languages", None)
@@ -500,6 +503,7 @@ class WebhookNotifier:
                         date=date,
                         lang=lang,
                         summarizer=summarizer,
+                        bilingual=bilingual,
                     ),
                 }
             ]
@@ -512,6 +516,7 @@ class WebhookNotifier:
                 date,
                 all_items_count,
                 language=lang,
+                bilingual=bilingual,
             )
             overview_message = {
                 **base_vars,
@@ -533,6 +538,7 @@ class WebhookNotifier:
                         total=view_item.group_count,
                         title=view_item.title,
                         score=view_item.score,
+                        bilingual=bilingual,
                     )
                     item_messages.append(
                         {
@@ -788,6 +794,7 @@ class WebhookNotifier:
         date: str,
         lang: str,
         summarizer: DailySummarizer,
+        bilingual: bool = False,
     ) -> None:
         """Send daily summary webhook notification.
 
@@ -809,6 +816,7 @@ class WebhookNotifier:
             date=date,
             lang=lang,
             summarizer=summarizer,
+            bilingual=bilingual,
         )
         if not messages:
             self.console.print(

@@ -47,6 +47,16 @@ def _pangu(text: str) -> str:
     return text
 
 
+def _split_bilingual(value: str) -> tuple[str, str]:
+    """Split the strict English-first/Chinese-second artifact format."""
+    text = str(value or "").strip()
+    for marker in ("\n中文：", "\n翻译：", "\nChinese:"):
+        if marker in text:
+            english, chinese = text.split(marker, 1)
+            return english.strip(), chinese.strip()
+    return text, ""
+
+
 LABELS = {
     "en": {
         "header": "Horizon Daily",
@@ -87,6 +97,17 @@ LABELS = {
             "2. 添加更多多样化的信息源\n"
             "3. 检查 AI 模型是否正常工作\n"
         ),
+    },
+    "bilingual": {
+        "header": "Horizon Daily / Horizon 每日速递",
+        "source": "Source / 来源",
+        "background": "Background / 背景",
+        "discussion": "Discussion / 社区讨论",
+        "references": "References / 参考链接",
+        "tags": "Tags / 标签",
+        "selected_items": "Selected {selected} important items from {total} fetched / 从 {total} 条内容中筛选出 {selected} 条重要资讯",
+        "empty_analyzed": "Analyzed {total} items, but none met the importance threshold / 已分析 {total} 条内容，但没有达到重要性阈值",
+        "empty_body": "No significant developments today. / 今日暂无重要动态。",
     },
 }
 
@@ -213,6 +234,7 @@ class DailySummarizer:
         date: str,
         total_fetched: int,
         language: str = "en",
+        bilingual: bool = False,
     ) -> str:
         """Generate daily summary in Markdown format.
 
@@ -227,7 +249,7 @@ class DailySummarizer:
         Returns:
             str: Markdown formatted summary
         """
-        labels = LABELS.get(language, LABELS["en"])
+        labels = LABELS["bilingual"] if bilingual else LABELS.get(language, LABELS["en"])
 
         if not items:
             return self._generate_empty_summary(date, total_fetched, labels)
@@ -243,17 +265,37 @@ class DailySummarizer:
         view = self.build_view(items, language)
         for group in view.groups:
             profile_name = _escape_markdown(group.name)
+            if bilingual:
+                profile_en = self.profile_name(group.profile_id, "en")
+                profile_zh = self.profile_name(group.profile_id, "zh")
+                profile_name = _escape_markdown(profile_en)
+                if profile_zh and profile_zh != profile_en:
+                    profile_name = (
+                        f"{profile_name}<br><span class=\"bilingual-zh\">"
+                        f"{_pangu(_escape_markdown(profile_zh))}</span>"
+                    )
             if language == "zh":
                 profile_name = _pangu(profile_name)
             toc_entries = [f"**{profile_name}**"]
             for view_item in group.items:
-                title = _escape_markdown(view_item.title)
+                title_en, title_zh = (
+                    _split_bilingual(view_item.title)
+                    if bilingual
+                    else (view_item.title, "")
+                )
+                title = _escape_markdown(title_en)
                 if language == "zh":
                     title = _pangu(title)
-                toc_entries.append(
+                toc_entry = (
                     f"{view_item.index}. [{title}](#{view_item.anchor_id}) "
                     f"\u2b50\ufe0f {view_item.score}/10"
                 )
+                if bilingual and title_zh:
+                    toc_entry += (
+                        f"<br><span class=\"bilingual-zh\">"
+                        f"{_pangu(_escape_markdown(title_zh))}</span>"
+                    )
+                toc_entries.append(toc_entry)
             toc_sections.append("\n".join(toc_entries))
             body_sections.append(f"## {profile_name}\n\n")
             body_sections.extend(
@@ -266,6 +308,7 @@ class DailySummarizer:
                     anchor_id=view_item.anchor_id,
                     title_override=view_item.title,
                     score_override=view_item.score,
+                    bilingual=bilingual,
                 )
                 for view_item in group.items
             )
@@ -279,13 +322,20 @@ class DailySummarizer:
         date: str,
         total_fetched: int,
         language: str = "en",
+        bilingual: bool = False,
     ) -> str:
         """Generate a compact overview for multi-message webhook delivery."""
-        labels = LABELS.get(language, LABELS["en"])
+        labels = LABELS["bilingual"] if bilingual else LABELS.get(language, LABELS["en"])
         if not items:
             return self._generate_empty_summary(date, total_fetched, labels)
 
-        if language == "zh":
+        if bilingual:
+            header = (
+                f"# Horizon Daily / Horizon 每日速递 - {date}\n\n"
+                f"> Selected {len(items)} important items from {total_fetched} fetched. / "
+                f"从 {total_fetched} 条内容中筛选出 {len(items)} 条重要资讯。\n\n"
+            )
+        elif language == "zh":
             header = (
                 f"# {labels['header']} - {date}\n\n"
                 f"> 从 {total_fetched} 条内容中筛选出 {len(items)} 条重要资讯。\n\n"
@@ -328,10 +378,14 @@ class DailySummarizer:
         *,
         title: Optional[str] = None,
         score: float | str | None = None,
+        bilingual: bool = False,
     ) -> str:
         """Generate one item message for multi-message webhook delivery."""
         labels = LABELS.get(language, LABELS["en"])
-        prefix = f"第 {index}/{total} 条\n\n" if language == "zh" else f"Item {index}/{total}\n\n"
+        if bilingual:
+            prefix = f"Item {index}/{total} / 第 {index}/{total} 条\n\n"
+        else:
+            prefix = f"第 {index}/{total} 条\n\n" if language == "zh" else f"Item {index}/{total}\n\n"
         return normalize_language(
             prefix
             + self._format_item(
@@ -341,6 +395,7 @@ class DailySummarizer:
                 index,
                 title_override=title,
                 score_override=score,
+                bilingual=bilingual,
             ).rstrip("-\n "),
             language,
         )
@@ -356,12 +411,21 @@ class DailySummarizer:
         anchor_id: Optional[str] = None,
         title_override: Optional[str] = None,
         score_override: float | str | None = None,
+        bilingual: bool = False,
     ) -> str:
         """Format a single ContentItem into Markdown."""
         artifact = item.processing.artifacts.get(language) if item.processing else None
+        if bilingual and not artifact and item.processing:
+            artifact = item.processing.artifacts.get("zh") or item.processing.artifacts.get("en")
         analysis = item.processing.analysis if item.processing else None
         _title = title_override or (artifact.title if artifact else item.title)
-        title = _escape_markdown(_title)
+        title_en, title_zh = _split_bilingual(_title) if bilingual else (_title, "")
+        # A bilingual run may receive a legacy artifact. Keep the English
+        # source title visible instead of silently publishing a Chinese-only
+        # heading while the item is being repaired.
+        if bilingual and not title_zh:
+            title_en = title_en or item.title
+        title = _escape_markdown(title_en)
         raw_url = str(item.url)
         url = _safe_url(raw_url)
         score = (
@@ -381,14 +445,31 @@ class DailySummarizer:
         )
 
         summary = _escape_markdown(summary)
-        primary_content = (
-            _escape_markdown(primary_block.content) if primary_block else ""
-        )
+        primary_content = primary_block.content if primary_block else ""
 
-        if language == "zh":
+        if bilingual:
+            summary_en, summary_zh = _split_bilingual(summary)
+            primary_en, primary_zh = _split_bilingual(primary_content)
+            summary = _escape_markdown(summary_en)
+            summary_zh = _escape_markdown(summary_zh)
+            primary_content = _escape_markdown(primary_en)
+            primary_zh = _escape_markdown(primary_zh)
+        else:
+            summary = _escape_markdown(summary)
+            primary_content = _escape_markdown(primary_content)
+            summary_zh = primary_zh = ""
+
+        if language == "zh" and not bilingual:
             title = _pangu(title)
             summary = _pangu(summary)
             primary_content = _pangu(primary_content)
+        if bilingual:
+            title = _pangu(title)
+            title_zh = _pangu(_escape_markdown(title_zh))
+            summary = _pangu(summary)
+            summary_zh = _pangu(summary_zh)
+            primary_content = _pangu(primary_content)
+            primary_zh = _pangu(primary_zh)
 
         # Source line with parts joined by " · ", link appended at end
         source_type = item.source_type.value
@@ -422,22 +503,48 @@ class DailySummarizer:
             f'<a id="{anchor_id or f"item-{index}"}"></a>',
             f"{'#' * heading_level} {title_link} \u2b50\ufe0f {score}/10",  # ⭐️
         ]
+        if bilingual and title_zh:
+            lines.extend(["", f'<div class="bilingual-zh"><strong>中文标题：</strong>{title_zh}</div>'])
         if summary.strip():
-            lines.extend(["", summary])
+            lines.extend(["", f'<div class="bilingual-en">{summary}</div>' if bilingual else summary])
+        if bilingual and summary_zh.strip():
+            lines.extend(["", f'<div class="bilingual-zh"><strong>中文：</strong>{summary_zh}</div>'])
         if primary_content.strip():
-            lines.extend(["", primary_content])
+            lines.extend(["", f'<div class="bilingual-en">{primary_content}</div>' if bilingual else primary_content])
+        if bilingual and primary_zh.strip():
+            lines.extend(["", f'<div class="bilingual-zh"><strong>中文：</strong>{primary_zh}</div>'])
         lines.extend(["", source_line])
 
         if artifact:
             for block in artifact.blocks:
                 if block.primary:
                     continue
-                block_title = _escape_markdown(block.title)
-                block_content = _escape_markdown(block.content)
-                if language == "zh":
+                block_title_raw = block.title
+                block_content_raw = block.content
+                if bilingual:
+                    block_title_en, block_title_zh = _split_bilingual(block_title_raw)
+                    block_content_en, block_content_zh = _split_bilingual(block_content_raw)
+                    block_title = _escape_markdown(block_title_en)
+                    block_title_zh = _escape_markdown(block_title_zh)
+                    block_content = _escape_markdown(block_content_en)
+                    block_content_zh = _escape_markdown(block_content_zh)
+                else:
+                    block_title = _escape_markdown(block_title_raw)
+                    block_content = _escape_markdown(block_content_raw)
+                    block_title_zh = block_content_zh = ""
+                if language == "zh" and not bilingual:
                     block_title = _pangu(block_title)
                     block_content = _pangu(block_content)
-                lines.extend(["", f"**「{block_title}」** {block_content}"])
+                if bilingual:
+                    block_title = _pangu(block_title)
+                    block_title_zh = _pangu(block_title_zh)
+                    block_content = _pangu(block_content)
+                    block_content_zh = _pangu(block_content_zh)
+                    lines.extend(["", f'<div class="bilingual-en"><strong>{block_title}</strong> {block_content}</div>'])
+                    if block_content_zh:
+                        lines.append(f'<div class="bilingual-zh"><strong>「{block_title_zh or block_title}」</strong> {block_content_zh}</div>')
+                else:
+                    lines.extend(["", f"**「{block_title}」** {block_content}"])
 
         sources = artifact.sources if artifact else []
         if sources:

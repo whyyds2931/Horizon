@@ -661,6 +661,9 @@ def _create_chained_client(config: AIConfig) -> ChainedAIClient:
             analysis_concurrency=config.analysis_concurrency,
             enrichment_concurrency=config.enrichment_concurrency,
             languages=config.languages,
+            bilingual_output=config.bilingual_output,
+            enable_enrichment_tools=config.enable_enrichment_tools,
+            max_analysis_items=config.max_analysis_items,
             azure_endpoint_env=(
                 config.azure_endpoint_env or defaults.get("azure_endpoint_env")
                 if provider == AIProvider.AZURE

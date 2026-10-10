@@ -274,8 +274,11 @@ class HorizonOrchestrator:
                     f"→ {len(merged_items)} unique items\n"
                 )
 
-            # 4. Analyze with AI
-            analyzed_items = await self.analyze_items(merged_items)
+            # 4. Analyze with AI. Scheduled/free-tier configurations can cap
+            # this stage to avoid spending quota on a long tail of low-signal
+            # items while retaining recency and source diversity.
+            analysis_items = self._limit_analysis_items(merged_items)
+            analyzed_items = await self.analyze_items(analysis_items)
             self.console.print(
                 f"{self.icons['ai']} Analyzed {len(analyzed_items)} items with AI\n"
             )
@@ -296,7 +299,30 @@ class HorizonOrchestrator:
             self.console.print("")
 
             # 6. Search related stories + enrich with background knowledge (2nd AI pass)
-            await self.enrich_items(important_items)
+            enrichment_result = await self.enrich_items(important_items)
+            if self.config.ai.bilingual_output:
+                # Never publish a partial artifact. A missing translation is
+                # less useful than omitting one item from the daily briefing.
+                valid_items = []
+                for item in important_items:
+                    artifact = (
+                        item.processing.artifacts.get("zh")
+                        if item.processing
+                        else None
+                    )
+                    values = [artifact.title] if artifact else []
+                    if artifact:
+                        for block in artifact.blocks:
+                            values.extend((block.title, block.content))
+                    if values and all("中文：" in value for value in values):
+                        valid_items.append(item)
+                if len(valid_items) != len(important_items):
+                    self.console.print(
+                        f"{self.icons['warning']} Removed "
+                        f"{len(important_items) - len(valid_items)} items without "
+                        "complete bilingual artifacts\n"
+                    )
+                    important_items[:] = valid_items
 
             # 7. Generate and save daily summaries for each configured language
             today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -305,7 +331,13 @@ class HorizonOrchestrator:
                     profile_names=self.profiles.names,
                     profile_order=self.config.digest.profile_order,
                 )
-                summary = await summarizer.generate_summary(important_items, today, len(all_items), language=lang)
+                summary = await summarizer.generate_summary(
+                    important_items,
+                    today,
+                    len(all_items),
+                    language=lang,
+                    bilingual=self.config.ai.bilingual_output,
+                )
 
                 # Save to data/summaries/
                 summary_path = self.storage.save_daily_summary(today, summary, language=lang)
@@ -327,9 +359,9 @@ class HorizonOrchestrator:
                     front_matter = (
                         "---\n"
                         "layout: default\n"
-                        f"title: \"Horizon Summary: {today} ({lang.upper()})\"\n"
+                        f"title: \"Horizon Daily · {today}\"\n"
                         f"date: {today}\n"
-                        f"lang: {lang}\n"
+                        f"lang: {'bilingual' if self.config.ai.bilingual_output else lang}\n"
                         "---\n\n"
                     )
 
@@ -372,6 +404,7 @@ class HorizonOrchestrator:
                         date=today,
                         lang=lang,
                         summarizer=summarizer,
+                        bilingual=self.config.ai.bilingual_output,
                     )
                 if self.wechat_notifier:
                     await self.wechat_notifier.send_daily_summary(summary, lang)
@@ -421,6 +454,39 @@ class HorizonOrchestrator:
             hours = self.config.collection.time_window_hours
             since = datetime.now(timezone.utc) - timedelta(hours=hours)
         return since
+
+    def _limit_analysis_items(self, items: List[ContentItem]) -> List[ContentItem]:
+        """Apply an optional AI-call budget without starving one source type."""
+        limit = self.config.ai.max_analysis_items
+        if limit is None or len(items) <= limit:
+            return items
+
+        buckets: Dict[str, List[ContentItem]] = defaultdict(list)
+        for item in sorted(
+            items,
+            key=lambda value: value.published_at,
+            reverse=True,
+        ):
+            buckets[item.source_type.value].append(item)
+
+        selected: List[ContentItem] = []
+        keys = sorted(buckets)
+        while len(selected) < limit and keys:
+            next_keys = []
+            for key in keys:
+                bucket = buckets[key]
+                if bucket:
+                    selected.append(bucket.pop(0))
+                    if len(selected) >= limit:
+                        break
+                if bucket:
+                    next_keys.append(key)
+            keys = next_keys
+        self.console.print(
+            f"{self.icons['filter']} Analysis budget capped input at "
+            f"{len(selected)}/{len(items)} items\n"
+        )
+        return selected
 
     async def fetch_all_sources(self, since: datetime) -> List[ContentItem]:
         """Fetch content from all configured sources.
@@ -866,7 +932,10 @@ class HorizonOrchestrator:
         groups = digest.category_groups
         max_items = digest.max_items
 
-        if not groups and max_items is None:
+        profile_minimum = digest.profile_minimum
+        profile_limits = digest.profile_limits
+
+        if not groups and max_items is None and not profile_minimum and not profile_limits:
             return BalancedDigestResult(items=items)
 
         sorted_items = sorted(
@@ -898,10 +967,52 @@ class HorizonOrchestrator:
                 )
 
         selected: List[tuple[ContentItem, str]] = []
+        selected_ids: set[str] = set()
         group_counts: Dict[str, int] = defaultdict(int)
+        profile_counts: Dict[str, int] = defaultdict(int)
         default_group = digest.default_group
 
+        def profile_id(item: ContentItem) -> str:
+            if item.processing and item.processing.classification:
+                return item.processing.classification.profile
+            if isinstance(item.profile, str):
+                return item.profile
+            return "unclassified"
+
+        def can_take(item: ContentItem, group_key: str) -> bool:
+            if group_key in groups and group_counts[group_key] >= groups[group_key].limit:
+                return False
+            if group_key not in groups and digest.default_group_limit is not None:
+                if group_counts[group_key] >= digest.default_group_limit:
+                    return False
+            item_profile = profile_id(item)
+            profile_limit = profile_limits.get(item_profile)
+            return profile_limit is None or profile_counts[item_profile] < profile_limit
+
+        # Reserve a small number for each configured profile first, then fill
+        # the remaining slots by score. This keeps finance/biology/psychology
+        # visible when technology produces most of the high-scoring items.
+        if profile_minimum:
+            for item in sorted_items:
+                item_profile = profile_id(item)
+                if profile_counts[item_profile] >= profile_minimum:
+                    continue
+                category = item.metadata.get("category")
+                group_key = (
+                    category_to_group.get(category, default_group)
+                    if isinstance(category, str)
+                    else default_group
+                )
+                if not can_take(item, group_key):
+                    continue
+                selected.append((item, group_key))
+                selected_ids.add(item.id)
+                group_counts[group_key] += 1
+                profile_counts[item_profile] += 1
+
         for item in sorted_items:
+            if item.id in selected_ids:
+                continue
             category = item.metadata.get("category")
             group_key = (
                 category_to_group.get(category, default_group)
@@ -909,16 +1020,13 @@ class HorizonOrchestrator:
                 else default_group
             )
 
-            if group_key in groups:
-                limit = groups[group_key].limit
-            else:
-                limit = digest.default_group_limit
-
-            if limit is not None and group_counts[group_key] >= limit:
+            if not can_take(item, group_key):
                 continue
 
             selected.append((item, group_key))
+            selected_ids.add(item.id)
             group_counts[group_key] += 1
+            profile_counts[profile_id(item)] += 1
 
         if max_items is not None:
             selected = selected[:max_items]
@@ -1046,6 +1154,8 @@ class HorizonOrchestrator:
             self.config.ai.languages,
             console=self.console,
             tools=ToolRegistry(self.storage.summaries_dir),
+            bilingual=self.config.ai.bilingual_output,
+            enable_tools=self.config.ai.enable_enrichment_tools,
         )
         result = await enricher.enrich_batch(items)
         self.console.print(
