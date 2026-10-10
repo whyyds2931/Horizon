@@ -1,56 +1,43 @@
 ---
 layout: default
-title: Home
+title: Horizon Daily
 ---
 
-# Horizon
+<div class="home-intro" markdown="1">
 
-<div id="lang-zh" class="lang-section" markdown="1">
+# Horizon Daily
 
-欢迎来到 [Horizon](https://github.com/thysrael/Horizon)，一个 AI 驱动的信息聚合系统。
+> English-first, Chinese-second briefings across technology, finance, biology, psychology, and research.
 
-## 文档
-
-- [配置指南](configuration) — AI 提供商、信息源、过滤规则与环境变量替换
-- [信息源采集器](scrapers) — Horizon 如何从 GitHub、Hacker News、RSS、Reddit 采集内容
-- [评分系统](scoring) — 基于 AI 的内容分析与 0-10 评分体系
-
-## 每日速递 <a class="rss-icon" href="{{ '/feed-zh.xml' | relative_url }}" aria-label="订阅中文"><svg viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M128.081 415.959c0 35.369-28.672 64.041-64.041 64.041S0 451.328 0 415.959s28.672-64.041 64.041-64.041 64.04 28.673 64.04 64.041zm175.66 47.25c-8.354-154.6-132.185-278.587-286.95-286.95C7.656 175.765 0 183.105 0 192.253v48.069c0 8.415 6.49 15.472 14.887 16.018 111.832 7.284 201.473 96.702 208.772 208.772.547 8.397 7.604 14.887 16.018 14.887h48.069c9.149.001 16.489-7.655 15.995-16.79zm144.249.288C439.596 229.677 251.465 40.445 16.503 32.01 7.473 31.686 0 38.981 0 48.016v48.068c0 8.625 6.835 15.645 15.453 15.999 191.179 7.839 344.627 161.316 352.465 352.465.353 8.618 7.373 15.453 15.999 15.453h48.068c9.034-.001 16.329-7.474 16.005-16.504z"/></svg></a>
-
-<ul>
-  {% assign zh_posts = site.posts | where: "lang", "zh" %}
-  {% for post in zh_posts limit:20 %}
-    <li>
-      <a href="{{ post.url | relative_url }}">{{ post.date | date: "%Y-%m-%d" }}</a>
-    </li>
-  {% else %}
-    <li><em>暂无内容</em></li>
-  {% endfor %}
-</ul>
+[配置指南](configuration) · [信息源](scrapers) · [评分系统](scoring) · [中文说明](https://github.com/whyyds2931/Horizon/blob/main/README_zh.md)
 
 </div>
 
-<div id="lang-en" class="lang-section" markdown="1">
+## Daily Briefings
 
-Welcome to [Horizon](https://github.com/thysrael/Horizon), an AI-driven information aggregation system.
+{% assign digest_posts = site.posts | where: "lang", "bilingual" %}
+{% assign fallback_posts = site.posts | where: "lang", "zh" %}
+{% if digest_posts.size == 0 %}{% assign digest_posts = fallback_posts %}{% endif %}
 
-## Documentation
+<div class="digest-list">
+{% for post in digest_posts limit:20 %}
+  <a class="digest-row" href="{{ post.url | relative_url }}">
+    <span class="digest-date">{{ post.date | date: "%Y.%m.%d" }}</span>
+    <span class="digest-title">{{ post.title }}</span>
+    <span class="digest-arrow" aria-hidden="true">↗</span>
+  </a>
+{% else %}
+  <p><em>No daily briefing has been published yet. / 暂无日报。</em></p>
+{% endfor %}
+</div>
 
-- [Configuration Guide](configuration) — AI providers, information sources, filtering, and environment variable substitution
-- [Source Scrapers](scrapers) — How Horizon collects content from GitHub, Hacker News, RSS, and Reddit
-- [Scoring System](scoring) — AI-based content analysis and the 0-10 scoring scale
-
-## Daily Digest <a class="rss-icon" href="{{ '/feed-en.xml' | relative_url }}" aria-label="Subscribe English"><svg viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M128.081 415.959c0 35.369-28.672 64.041-64.041 64.041S0 451.328 0 415.959s28.672-64.041 64.041-64.041 64.04 28.673 64.04 64.041zm175.66 47.25c-8.354-154.6-132.185-278.587-286.95-286.95C7.656 175.765 0 183.105 0 192.253v48.069c0 8.415 6.49 15.472 14.887 16.018 111.832 7.284 201.473 96.702 208.772 208.772.547 8.397 7.604 14.887 16.018 14.887h48.069c9.149.001 16.489-7.655 15.995-16.79zm144.249.288C439.596 229.677 251.465 40.445 16.503 32.01 7.473 31.686 0 38.981 0 48.016v48.068c0 8.625 6.835 15.645 15.453 15.999 191.179 7.839 344.627 161.316 352.465 352.465.353 8.618 7.373 15.453 15.999 15.453h48.068c9.034-.001 16.329-7.474 16.005-16.504z"/></svg></a>
-
-<ul>
-  {% assign en_posts = site.posts | where: "lang", "en" %}
-  {% for post in en_posts limit:20 %}
-    <li>
-      <a href="{{ post.url | relative_url }}">{{ post.date | date: "%Y-%m-%d" }}</a>
-    </li>
-  {% else %}
-    <li><em>No posts yet</em></li>
-  {% endfor %}
-</ul>
-
+<div class="home-grid">
+  <section>
+    <h2>What Horizon follows</h2>
+    <p>Four editorial lanes keep the daily digest useful: technology and tools, markets and finance, biology and life sciences, plus psychology and neuroscience.</p>
+  </section>
+  <section>
+    <h2>How to read</h2>
+    <p>Every item puts the English briefing first and the Simplified Chinese translation directly below it. Use the floating toggle for bilingual, English-only, or Chinese-only reading.</p>
+  </section>
 </div>

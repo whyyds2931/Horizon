@@ -303,6 +303,9 @@ By default, AI scoring and enrichment run one item at a time. If your API endpoi
 
 - `analysis_concurrency`: Number of items scored in parallel. Default is `1`.
 - `enrichment_concurrency`: Number of high-scoring items enriched in parallel. Default is `1`.
+- `bilingual_output`: When `true`, generate one artifact per item with English first and a `中文：` Simplified Chinese translation directly below it. This is the recommended setting for Pages and webhook delivery because it halves localization calls.
+- `enable_enrichment_tools`: Whether enrichment may call web/history search. Set `false` for free-tier scheduled runs to avoid several extra requests per item.
+- `max_analysis_items`: Optional per-run cap on AI scoring. Horizon distributes the cap across source types so one high-volume source cannot consume the entire quota.
 - Both values are clamped to a minimum of `1`.
 - Preserve the existing retry behavior per item.
 - Result ordering is preserved regardless of concurrency.
@@ -595,6 +598,13 @@ digest limits:
 {
   "digest": {
     "max_items": 20,
+    "profile_minimum": 2,
+    "profile_limits": {
+      "tech-news": 8,
+      "finance-news": 6,
+      "bio-news": 5,
+      "psych-news": 5
+    },
     "profile_order": ["tech-news", "tech-blog", "finance-news"],
     "category_groups": {
       "ai": {
@@ -615,6 +625,8 @@ digest limits:
 ```
 
 - `max_items`: Optional final cap after all group limits are applied
+- `profile_minimum`: Optional minimum number of selected items per profile. This keeps lower-volume lanes such as finance, biology, and psychology visible when technology has more high-scoring items.
+- `profile_limits`: Optional per-profile maximum. Values are applied before `max_items`.
 - `profile_order`: Optional final-summary section priority. When non-empty,
   loaded profiles not listed here are appended in profile discovery order.
   When empty or omitted, sections follow their first appearance in the selected
